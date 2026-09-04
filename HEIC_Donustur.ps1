@@ -7,7 +7,7 @@ function Write-Log([string]$msg, [ConsoleColor]$color = 'Gray') {
     $logLines.Add($msg)
 }
 
-$Version = "1.0"
+$Version = "1.1"
 
 Write-Host ""
 Write-Host "  __  __  ___ ____  ____   " -ForegroundColor Cyan

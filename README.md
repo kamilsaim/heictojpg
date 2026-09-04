@@ -13,7 +13,11 @@ Live Photo videolarini duzenleyen bir Windows araci. Tek yapmaniz gereken
 1. `HEIC_Donustur.bat` dosyasini, icinde HEIC fotograflari olan klasore
    (veya bir ust klasore, alt klasorler de taranir) kopyalayin.
 2. Cift tiklayip calistirin.
-3. Sirasiyla sorulan sorulara `E` (evet) veya `H` (hayir) ile cevap verin.
+3. Acilan menuden hangi islemleri yapmak istediginizi secin (numaralari
+   virgulle ayirarak yazin, orn. `1,3,4`; hicbir sey yazmadan Enter'a
+   basarsaniz tum islemler calisir).
+4. Secilen islemler icin sorulan sorulara `E` (evet) veya `H` (hayir) ile
+   cevap verin.
 
 > HEIC dosyalarini acabilmek icin Windows'ta **HEIF Image Extensions** ve
 > **HEVC Video Extensions** eklentileri kurulu olmalidir. Kurulu degilse
@@ -21,7 +25,9 @@ Live Photo videolarini duzenleyen bir Windows araci. Tek yapmaniz gereken
 
 ## Ne yapar?
 
-Program, calistirildigi klasorde (alt klasorler dahil) sirasiyla:
+Program basta bir menu gosterir; asagidaki islemlerden hangilerinin
+calisacagini secersiniz (secilmeyenler icin hicbir soru sorulmaz).
+Calistirildigi klasorde (alt klasorler dahil) sirasiyla:
 
 1. **HEIC -> JPEG donusturur** — bulunan tum `.heic` dosyalarini `.jpg`
    olarak kaydeder, orijinal EXIF yonlendirmesini korur. Birden fazla
