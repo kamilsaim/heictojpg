@@ -145,5 +145,10 @@ function Resolve-DuplicateClusters {
         }
         $seenClusterIds[$id] = $true
     }
+    # Basindaki virgul, PowerShell'in disaridaki diziyi acip elemanlarini teker teker
+    # dondurmesini engeller (elemanlarin kendisi de birer dizi oldugu icin bu kritik).
+    # Bunu "@($clusters)" olarak sadelestirmeyin: PowerShell 5.1'de $clusters bir
+    # List[object] ve elemanlari dizi oldugunda "@($clusters)" ArgumentException firlatiyor.
+    # Yalniz "$clusters.ToArray()" da (virgulsuz) pipeline'da yine acilip bozulur.
     return , $clusters.ToArray()
 }
