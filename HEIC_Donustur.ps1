@@ -50,6 +50,58 @@ if (-not ($heifOk -and $hevcOk)) {
     exit
 }
 
+# --- Islem secim menusu ---
+function Ask-Menu {
+    $secenekler = [ordered]@{
+        1 = "HEIC -> JPEG donustur"
+        2 = "AAE dosyalarini sil"
+        3 = "Ciftlenen (ayni icerikli) resimleri tasi"
+        4 = "Live Photo videolarini (.MOV) tasi"
+        5 = "Diger video dosyalarini tasi"
+    }
+
+    while ($true) {
+        Write-Host ""
+        Write-Host "Hangi islemleri yapmak istiyorsunuz? (birden fazlasini virgulle ayirarak secin, bos = hepsi)" -ForegroundColor Cyan
+        Write-Host ""
+        foreach ($k in $secenekler.Keys) {
+            Write-Host ("  {0}) {1}" -f $k, $secenekler[$k])
+        }
+        Write-Host ""
+        $girdi = Read-Host "Seciminiz (orn: 1,3,4) [Enter = hepsi]"
+
+        if ([string]::IsNullOrWhiteSpace($girdi)) {
+            return @(1, 2, 3, 4, 5)
+        }
+
+        $tokenlar = $girdi -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
+        $sayilar = New-Object System.Collections.Generic.List[int]
+        $gecerli = $true
+
+        foreach ($t in $tokenlar) {
+            $n = 0
+            if (-not [int]::TryParse($t, [ref]$n) -or $n -lt 1 -or $n -gt 5) {
+                $gecerli = $false
+                break
+            }
+            if (-not $sayilar.Contains($n)) { $sayilar.Add($n) }
+        }
+
+        if ($gecerli -and $sayilar.Count -gt 0) {
+            return $sayilar
+        }
+
+        Write-Host "Lutfen 1-5 arasinda numaralari virgulle ayirarak girin (veya hepsi icin bos birakin)." -ForegroundColor Yellow
+    }
+}
+
+$secilenler = Ask-Menu
+$yapDonustur      = $secilenler -contains 1
+$yapAaeSil        = $secilenler -contains 2
+$yapCiftTasi      = $secilenler -contains 3
+$yapLivePhotoTasi = $secilenler -contains 4
+$yapVideoTasi     = $secilenler -contains 5
+
 # --- WinRT (Windows Imaging) API hazirligi ---
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $null = [Windows.Storage.StorageFile,Windows.Storage,ContentType=WindowsRuntime]
