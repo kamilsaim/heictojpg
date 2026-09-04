@@ -204,7 +204,10 @@ function Get-PairedMov([System.IO.FileInfo]$imgFile) {
     return $null
 }
 
-$silAae = Ask-YesNo "AAE dosyalari (duzenleme/efekt bilgisi) silinsin mi?"
+$silAae = $false
+if ($yapAaeSil) {
+    $silAae = Ask-YesNo "AAE dosyalari (duzenleme/efekt bilgisi) silinsin mi?"
+}
 
 Write-Log ""
 Write-Log "HEIC dosyalari araniyor (alt klasorler dahil)..." Cyan
