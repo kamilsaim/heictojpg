@@ -70,3 +70,28 @@ function Get-OrientationCorrectedBitmap {
     }
     return $Bitmap
 }
+
+function Get-ImageFingerprint {
+    param([Parameter(Mandatory)][string]$Path)
+
+    try {
+        $bmp = New-Object System.Drawing.Bitmap($Path)
+        try {
+            $corrected = Get-OrientationCorrectedBitmap -Bitmap $bmp
+            $hash = Get-DHash -Bitmap $corrected
+            [PSCustomObject]@{
+                Path     = $Path
+                Hash     = $hash
+                Width    = $corrected.Width
+                Height   = $corrected.Height
+                FileSize = (Get-Item -LiteralPath $Path).Length
+            }
+        }
+        finally {
+            $bmp.Dispose()
+        }
+    }
+    catch {
+        return $null
+    }
+}

@@ -105,3 +105,56 @@ Describe "Get-OrientationCorrectedBitmap" {
         $bmp.Dispose()
     }
 }
+
+Describe "Get-ImageFingerprint" {
+    BeforeEach {
+        Add-Type -AssemblyName System.Drawing
+        $script:tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("PhotoDupTest_" + [Guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:tempDir | Out-Null
+    }
+
+    AfterEach {
+        Remove-Item -LiteralPath $script:tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    function New-TestJpeg([string]$Path, [int]$Width, [int]$Height) {
+        $bmp = New-Object System.Drawing.Bitmap($Width, $Height)
+        for ($x = 0; $x -lt $Width; $x++) {
+            $shade = [int](($x / [double]$Width) * 255)
+            for ($y = 0; $y -lt $Height; $y++) {
+                $bmp.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($shade, $shade, $shade))
+            }
+        }
+        $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+        $bmp.Dispose()
+    }
+
+    It "reads width, height and file size for a valid image" {
+        $path = Join-Path $script:tempDir "big.jpg"
+        New-TestJpeg -Path $path -Width 64 -Height 32
+        $fp = Get-ImageFingerprint -Path $path
+        $fp | Should Not Be $null
+        $fp.Width | Should Be 64
+        $fp.Height | Should Be 32
+        $fp.FileSize | Should Be (Get-Item -LiteralPath $path).Length
+    }
+
+    It "produces a low Hamming distance between the same image saved at two sizes" {
+        $bigPath = Join-Path $script:tempDir "same_big.jpg"
+        $smallPath = Join-Path $script:tempDir "same_small.jpg"
+        New-TestJpeg -Path $bigPath -Width 64 -Height 32
+        New-TestJpeg -Path $smallPath -Width 16 -Height 8
+
+        $fpBig = Get-ImageFingerprint -Path $bigPath
+        $fpSmall = Get-ImageFingerprint -Path $smallPath
+
+        (Get-HammingDistance -A $fpBig.Hash -B $fpSmall.Hash) | Should BeLessThan 6
+    }
+
+    It "returns null for a corrupt or unreadable file instead of throwing" {
+        $badPath = Join-Path $script:tempDir "corrupt.jpg"
+        Set-Content -LiteralPath $badPath -Value "this is not a real jpeg" -Encoding Ascii
+        { Get-ImageFingerprint -Path $badPath } | Should Not Throw
+        Get-ImageFingerprint -Path $badPath | Should Be $null
+    }
+}
