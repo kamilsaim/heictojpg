@@ -412,7 +412,10 @@ if ($tasiLivePhoto) {
 }
 
 Write-Host ""
-$tasiVideo = Ask-YesNo "Diger video dosyalari (.mp4, .mov, .avi, .mkv, .wmv, .m4v, .3gp) 'Videolar' klasorune tasinsin mi?"
+$tasiVideo = $false
+if ($yapVideoTasi) {
+    $tasiVideo = Ask-YesNo "Diger video dosyalari (.mp4, .mov, .avi, .mkv, .wmv, .m4v, .3gp) 'Videolar' klasorune tasinsin mi?"
+}
 if ($tasiVideo) {
     Write-Log ""
     Write-Log "Video dosyalari araniyor..." Cyan
