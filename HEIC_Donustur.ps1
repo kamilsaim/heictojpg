@@ -98,6 +98,9 @@ function Ask-Menu {
     }
 }
 
+$devamEt = $true
+while ($devamEt) {
+
 $secilenler = Ask-Menu
 $yapDonustur      = $secilenler -contains 1
 $yapAaeSil        = $secilenler -contains 2
@@ -225,10 +228,12 @@ if ($yapDonustur) {
         Write-Log "Donusturulecek HEIC dosyasi yok." Yellow
     } else {
         $donusturulecekler = New-Object System.Collections.Generic.List[object]
+        $atlanmisAmaVar = New-Object System.Collections.Generic.List[System.IO.FileInfo]
         foreach ($f in $heicFiles) {
             $hedef = [System.IO.Path]::ChangeExtension($f.FullName, ".jpg")
             if (Test-Path -LiteralPath $hedef) {
                 Write-Log "Atlandi (zaten var): $($f.Name)" DarkYellow
+                $atlanmisAmaVar.Add($f)
             } else {
                 $donusturulecekler.Add([PSCustomObject]@{ File = $f; Dest = $hedef })
             }
@@ -286,16 +291,21 @@ if ($yapDonustur) {
             Write-Log "Not: Hatali dosyalar icin Windows'ta 'HEIF Image Extensions' ve 'HEVC Video Extensions' uygulamalarinin (Microsoft Store) kurulu oldugundan emin olun." Yellow
         }
 
-        if ($basarili.Count -gt 0) {
+        $silinebilecekler = @($basarili) + @($atlanmisAmaVar)
+        if ($silinebilecekler.Count -gt 0) {
             Write-Host ""
-            $silHeic = Ask-YesNo "Basariyla donusturulen $($basarili.Count) adet HEIC dosyasi silinsin mi?"
+            $aciklama = "Basariyla donusturulen $($basarili.Count) adet HEIC dosyasi"
+            if ($atlanmisAmaVar.Count -gt 0) {
+                $aciklama += " ve daha once donusturulup JPG'si zaten var olan $($atlanmisAmaVar.Count) adet HEIC dosyasi"
+            }
+            $silHeic = Ask-YesNo "$aciklama (toplam $($silinebilecekler.Count) adet) silinsin mi?"
             if ($silHeic) {
-                foreach ($f in $basarili) {
+                foreach ($f in $silinebilecekler) {
                     Remove-Item -LiteralPath $f.FullName -Force
                 }
-                Write-Log "$($basarili.Count) adet HEIC dosyasi silindi." Green
+                Write-Log "$($silinebilecekler.Count) adet HEIC dosyasi silindi." Green
 
-                $pairedMovs = @($basarili | ForEach-Object { Get-PairedMov $_ } | Where-Object { $_ })
+                $pairedMovs = @($silinebilecekler | ForEach-Object { Get-PairedMov $_ } | Where-Object { $_ })
                 if ($pairedMovs.Count -gt 0) {
                     Write-Host ""
                     $silMov = Ask-YesNo "Silinen HEIC dosyalarina ait $($pairedMovs.Count) adet Live Photo videosu (.MOV) bulundu. Bunlar da silinsin mi?"
@@ -525,6 +535,12 @@ if ($tasiCozunurluk) {
     if ($okunamayan -gt 0) {
         Write-Log "$okunamayan adet dosya okunamadigi icin karsilastirmaya dahil edilmedi." Yellow
     }
+}
+
+Write-Host ""
+Write-Log "Bu turdaki islemler tamamlandi." Cyan
+$devamEt = Ask-YesNo "Ana menuye donup baska islem yapmak ister misiniz?"
+
 }
 
 Write-Log ""
