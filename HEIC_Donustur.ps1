@@ -321,8 +321,11 @@ if ($silAae) {
 }
 
 Write-Host ""
-$tasiCift = Ask-YesNo "Ciftlenen (icerigi ayni olan) resimler 'Ciftlenen_Resimler' klasorune tasinsin mi?"
 $duplicatesFolder = Join-Path $root "Ciftlenen_Resimler"
+$tasiCift = $false
+if ($yapCiftTasi) {
+    $tasiCift = Ask-YesNo "Ciftlenen (icerigi ayni olan) resimler 'Ciftlenen_Resimler' klasorune tasinsin mi?"
+}
 if ($tasiCift) {
     Write-Log ""
     Write-Log "Resimler karsilastiriliyor (icerik/hash bazli)..." Cyan
