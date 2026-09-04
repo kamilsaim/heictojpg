@@ -194,3 +194,30 @@ Describe "Resolve-DuplicateClusters" {
         $clusters[0].Count | Should Be 3
     }
 }
+
+Describe "Select-DuplicateWinnerAndLosers" {
+    function New-FakeFingerprint([string]$Path, [int]$Width, [int]$Height, [long]$FileSize) {
+        [PSCustomObject]@{ Path = $Path; Hash = [uint64]0; Width = $Width; Height = $Height; FileSize = $FileSize }
+    }
+
+    It "keeps the fingerprint with the higher resolution" {
+        $cluster = @(
+            (New-FakeFingerprint "low.jpg" 3024 4032 2000000),
+            (New-FakeFingerprint "high.jpg" 4032 3024 6000000)
+        )
+        $result = Select-DuplicateWinnerAndLosers -Cluster $cluster
+        $result.Winner.Path | Should Be "high.jpg"
+        $result.Losers.Count | Should Be 1
+        $result.Losers[0].Path | Should Be "low.jpg"
+    }
+
+    It "breaks a resolution tie using the larger file size" {
+        $cluster = @(
+            (New-FakeFingerprint "small_file.jpg" 1000 1000 1000000),
+            (New-FakeFingerprint "big_file.jpg" 1000 1000 3000000)
+        )
+        $result = Select-DuplicateWinnerAndLosers -Cluster $cluster
+        $result.Winner.Path | Should Be "big_file.jpg"
+        $result.Losers[0].Path | Should Be "small_file.jpg"
+    }
+}

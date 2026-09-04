@@ -152,3 +152,13 @@ function Resolve-DuplicateClusters {
     # Yalniz "$clusters.ToArray()" da (virgulsuz) pipeline'da yine acilip bozulur.
     return , $clusters.ToArray()
 }
+
+function Select-DuplicateWinnerAndLosers {
+    param([Parameter(Mandatory)][object[]]$Cluster)
+
+    $sorted = @($Cluster | Sort-Object -Property @{Expression = { $_.Width * $_.Height }; Descending = $true }, @{Expression = { $_.FileSize }; Descending = $true })
+    [PSCustomObject]@{
+        Winner = $sorted[0]
+        Losers = @($sorted | Select-Object -Skip 1)
+    }
+}
