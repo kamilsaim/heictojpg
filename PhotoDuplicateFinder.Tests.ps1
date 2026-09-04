@@ -158,3 +158,39 @@ Describe "Get-ImageFingerprint" {
         Get-ImageFingerprint -Path $badPath | Should Be $null
     }
 }
+
+Describe "Resolve-DuplicateClusters" {
+    function New-FakeFingerprint([string]$Path, [uint64]$Hash, [int]$Width, [int]$Height, [long]$FileSize) {
+        [PSCustomObject]@{ Path = $Path; Hash = $Hash; Width = $Width; Height = $Height; FileSize = $FileSize }
+    }
+
+    It "groups two fingerprints with a small Hamming distance into one cluster" {
+        $fps = @(
+            (New-FakeFingerprint "a.jpg" ([uint64]10) 100 100 1000),  # 0b1010
+            (New-FakeFingerprint "b.jpg" ([uint64]11) 200 200 2000)   # 0b1011
+        )
+        $clusters = Resolve-DuplicateClusters -Fingerprints $fps -Threshold 6
+        $clusters.Count | Should Be 1
+        $clusters[0].Count | Should Be 2
+    }
+
+    It "does not cluster fingerprints with a large Hamming distance" {
+        $fps = @(
+            (New-FakeFingerprint "a.jpg" ([uint64]0) 100 100 1000),
+            (New-FakeFingerprint "b.jpg" ([uint64]::MaxValue) 200 200 2000)
+        )
+        $clusters = Resolve-DuplicateClusters -Fingerprints $fps -Threshold 6
+        $clusters.Count | Should Be 0
+    }
+
+    It "merges three mutually close fingerprints into a single cluster" {
+        $fps = @(
+            (New-FakeFingerprint "a.jpg" ([uint64]0) 100 100 1000),  # 0b0000
+            (New-FakeFingerprint "b.jpg" ([uint64]1) 200 200 2000),  # 0b0001
+            (New-FakeFingerprint "c.jpg" ([uint64]3) 300 300 3000)   # 0b0011
+        )
+        $clusters = Resolve-DuplicateClusters -Fingerprints $fps -Threshold 2
+        $clusters.Count | Should Be 1
+        $clusters[0].Count | Should Be 3
+    }
+}

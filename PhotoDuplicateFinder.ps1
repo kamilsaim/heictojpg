@@ -95,3 +95,55 @@ function Get-ImageFingerprint {
         return $null
     }
 }
+
+function Resolve-DuplicateClusters {
+    param(
+        [Parameter(Mandatory)][object[]]$Fingerprints,
+        [Parameter(Mandatory)][int]$Threshold
+    )
+
+    $n = $Fingerprints.Count
+    $clusterIndex = New-Object 'int[]' $n
+    for ($i = 0; $i -lt $n; $i++) { $clusterIndex[$i] = -1 }
+    $nextClusterId = 0
+
+    for ($i = 0; $i -lt $n; $i++) {
+        for ($j = $i + 1; $j -lt $n; $j++) {
+            $distance = Get-HammingDistance -A $Fingerprints[$i].Hash -B $Fingerprints[$j].Hash
+            if ($distance -le $Threshold) {
+                if ($clusterIndex[$i] -eq -1 -and $clusterIndex[$j] -eq -1) {
+                    $clusterIndex[$i] = $nextClusterId
+                    $clusterIndex[$j] = $nextClusterId
+                    $nextClusterId++
+                }
+                elseif ($clusterIndex[$i] -ne -1 -and $clusterIndex[$j] -eq -1) {
+                    $clusterIndex[$j] = $clusterIndex[$i]
+                }
+                elseif ($clusterIndex[$j] -ne -1 -and $clusterIndex[$i] -eq -1) {
+                    $clusterIndex[$i] = $clusterIndex[$j]
+                }
+                else {
+                    # her ikisi de zaten farkli kumelerde: j'nin kumesini i'ninkiyle birlestir
+                    $targetId = $clusterIndex[$i]
+                    $sourceId = $clusterIndex[$j]
+                    for ($k = 0; $k -lt $n; $k++) {
+                        if ($clusterIndex[$k] -eq $sourceId) { $clusterIndex[$k] = $targetId }
+                    }
+                }
+            }
+        }
+    }
+
+    $clusters = New-Object System.Collections.Generic.List[object]
+    $seenClusterIds = @{}
+    for ($id = 0; $id -lt $nextClusterId; $id++) {
+        if ($seenClusterIds.ContainsKey($id)) { continue }
+        $members = for ($k = 0; $k -lt $n; $k++) { if ($clusterIndex[$k] -eq $id) { $Fingerprints[$k] } }
+        $members = @($members)
+        if ($members.Count -ge 2) {
+            $clusters.Add($members)
+        }
+        $seenClusterIds[$id] = $true
+    }
+    return , $clusters.ToArray()
+}
