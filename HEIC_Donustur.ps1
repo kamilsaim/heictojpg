@@ -1,6 +1,8 @@
 $root = $PSScriptRoot
 if (-not $root) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
 
+. (Join-Path $root "PhotoDuplicateFinder.ps1")
+
 $logLines = New-Object System.Collections.Generic.List[string]
 function Write-Log([string]$msg, [ConsoleColor]$color = 'Gray') {
     Write-Host $msg -ForegroundColor $color
@@ -58,6 +60,7 @@ function Ask-Menu {
         3 = "Ciftlenen (ayni icerikli) resimleri tasi"
         4 = "Live Photo videolarini (.MOV) tasi"
         5 = "Diger video dosyalarini tasi"
+        6 = "Farkli cozunurlukte ayni fotograflari bul (dusuk cozunurluklu kopyayi tasi)"
     }
 
     while ($true) {
@@ -71,7 +74,7 @@ function Ask-Menu {
         $girdi = Read-Host "Seciminiz (orn: 1,3,4) [Enter = hepsi]"
 
         if ([string]::IsNullOrWhiteSpace($girdi)) {
-            return @(1, 2, 3, 4, 5)
+            return @(1, 2, 3, 4, 5, 6)
         }
 
         $tokenlar = $girdi -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
@@ -80,7 +83,7 @@ function Ask-Menu {
 
         foreach ($t in $tokenlar) {
             $n = 0
-            if (-not [int]::TryParse($t, [ref]$n) -or $n -lt 1 -or $n -gt 5) {
+            if (-not [int]::TryParse($t, [ref]$n) -or $n -lt 1 -or $n -gt 6) {
                 $gecerli = $false
                 break
             }
@@ -91,7 +94,7 @@ function Ask-Menu {
             return $sayilar
         }
 
-        Write-Host "Lutfen 1-5 arasinda numaralari virgulle ayirarak girin (veya hepsi icin bos birakin)." -ForegroundColor Yellow
+        Write-Host "Lutfen 1-6 arasinda numaralari virgulle ayirarak girin (veya hepsi icin bos birakin)." -ForegroundColor Yellow
     }
 }
 
@@ -101,6 +104,7 @@ $yapAaeSil        = $secilenler -contains 2
 $yapCiftTasi      = $secilenler -contains 3
 $yapLivePhotoTasi = $secilenler -contains 4
 $yapVideoTasi     = $secilenler -contains 5
+$yapCozunurlukTasi = $secilenler -contains 6
 
 # --- WinRT (Windows Imaging) API hazirligi ---
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -440,6 +444,86 @@ if ($tasiVideo) {
             Move-ToFolder -f $f -folder $videosFolder
         }
         Write-Log "$($videoDosyalari.Count) adet video dosyasi '$videosFolder' klasorune tasindi." Green
+    }
+}
+
+Write-Host ""
+$resolutionDupFolder = Join-Path $root "Dusuk_Cozunurluklu_Kopyalar"
+$tasiCozunurluk = $false
+if ($yapCozunurlukTasi) {
+    $tasiCozunurluk = Ask-YesNo "Farkli cozunurlukte kaydedilmis ayni fotograflar bulunup dusuk cozunurluklu kopyalari 'Dusuk_Cozunurluklu_Kopyalar' klasorune tasinsin mi?"
+}
+if ($tasiCozunurluk) {
+    Write-Log ""
+    Write-Log "Fotograflar isim+gorsel benzerligine gore karsilastiriliyor..." Cyan
+
+    $hammingEsigi = 6
+
+    $resimUzantilariCozunurluk = @("*.jpg", "*.jpeg", "*.png", "*.heic")
+    $adayResimler = Get-ChildItem -Path $root -Recurse -File -Include $resimUzantilariCozunurluk -ErrorAction SilentlyContinue |
+                    Where-Object {
+                        $_.FullName -notlike "$duplicatesFolder*" -and
+                        $_.FullName -notlike "$resolutionDupFolder*"
+                    }
+
+    $anahtarGruplari = @{}
+    foreach ($f in $adayResimler) {
+        $anahtar = Get-ImgKey -FileName $f.Name
+        if ($anahtar) {
+            if (-not $anahtarGruplari.ContainsKey($anahtar)) { $anahtarGruplari[$anahtar] = New-Object System.Collections.Generic.List[object] }
+            $anahtarGruplari[$anahtar].Add($f)
+        }
+    }
+
+    $tasinanCozunurluk = 0
+    $tasinanCozunurlukMov = 0
+    $okunamayan = 0
+
+    foreach ($anahtar in $anahtarGruplari.Keys) {
+        $adayDosyalar = $anahtarGruplari[$anahtar]
+        if ($adayDosyalar.Count -lt 2) { continue }
+
+        $parmakIzleri = New-Object System.Collections.Generic.List[object]
+        foreach ($f in $adayDosyalar) {
+            $fp = Get-ImageFingerprint -Path $f.FullName
+            if ($fp) {
+                $fp | Add-Member -MemberType NoteProperty -Name FileInfo -Value $f
+                $parmakIzleri.Add($fp)
+            } else {
+                $okunamayan++
+                Write-Log "Atlandi (okunamadi): $($f.Name)" DarkYellow
+            }
+        }
+        if ($parmakIzleri.Count -lt 2) { continue }
+
+        $kumeler = Resolve-DuplicateClusters -Fingerprints @($parmakIzleri) -Threshold $hammingEsigi
+        foreach ($kume in $kumeler) {
+            $sonuc = Select-DuplicateWinnerAndLosers -Cluster $kume
+            foreach ($kaybeden in $sonuc.Losers) {
+                if (-not (Test-Path -LiteralPath $resolutionDupFolder)) {
+                    New-Item -ItemType Directory -Path $resolutionDupFolder | Out-Null
+                }
+                $pairedMov = Get-PairedMov $kaybeden.FileInfo
+                Move-ToFolder -f $kaybeden.FileInfo -folder $resolutionDupFolder
+                $tasinanCozunurluk++
+                if ($pairedMov) {
+                    Move-ToFolder -f $pairedMov -folder $resolutionDupFolder
+                    $tasinanCozunurlukMov++
+                }
+            }
+        }
+    }
+
+    if ($tasinanCozunurluk -eq 0) {
+        Write-Log "Farkli cozunurlukte ayni fotograf bulunamadi." Yellow
+    } else {
+        Write-Log "$tasinanCozunurluk adet dusuk cozunurluklu kopya '$resolutionDupFolder' klasorune tasindi." Green
+        if ($tasinanCozunurlukMov -gt 0) {
+            Write-Log "Bunlarla eslesen $tasinanCozunurlukMov adet Live Photo videosu (.MOV) da ayni klasore tasindi." Green
+        }
+    }
+    if ($okunamayan -gt 0) {
+        Write-Log "$okunamayan adet dosya okunamadigi icin karsilastirmaya dahil edilmedi." Yellow
     }
 }
 
