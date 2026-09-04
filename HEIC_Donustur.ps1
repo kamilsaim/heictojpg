@@ -469,7 +469,11 @@ if ($tasiCozunurluk) {
 
     $hammingEsigi = 6
 
-    $resimUzantilariCozunurluk = @("*.jpg", "*.jpeg", "*.png", "*.heic")
+    # .heic burada kasitli olarak haric tutuluyor: bu karsilastirma System.Drawing.Bitmap (GDI+)
+    # kullaniyor ve GDI+ ham HEIC dosyalarini acamiyor (secenek 1'deki donusturme ise WinRT
+    # BitmapDecoder API'sini kullandigi icin HEIC'i acabiliyor). HEIC dosyalarinin bu adimda
+    # dikkate alinabilmesi icin once secenek 1 ile JPEG'e donusturulmesi gerekir.
+    $resimUzantilariCozunurluk = @("*.jpg", "*.jpeg", "*.png")
     $adayResimler = Get-ChildItem -Path $root -Recurse -File -Include $resimUzantilariCozunurluk -ErrorAction SilentlyContinue |
                     Where-Object {
                         $_.FullName -notlike "$duplicatesFolder*" -and
