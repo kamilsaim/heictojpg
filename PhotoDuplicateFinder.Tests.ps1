@@ -33,3 +33,41 @@ Describe "Get-HammingDistance" {
         Get-HammingDistance -A ([uint64]10) -B ([uint64]2) | Should Be 1
     }
 }
+
+Describe "Get-DHash" {
+    BeforeEach {
+        Add-Type -AssemblyName System.Drawing
+    }
+
+    It "returns the same hash for two identical gradient images" {
+        $bmp1 = New-Object System.Drawing.Bitmap(32, 32)
+        $bmp2 = New-Object System.Drawing.Bitmap(32, 32)
+        for ($x = 0; $x -lt 32; $x++) {
+            $shade = $x * 8
+            for ($y = 0; $y -lt 32; $y++) {
+                $color = [System.Drawing.Color]::FromArgb($shade, $shade, $shade)
+                $bmp1.SetPixel($x, $y, $color)
+                $bmp2.SetPixel($x, $y, $color)
+            }
+        }
+        $hash1 = Get-DHash -Bitmap $bmp1
+        $hash2 = Get-DHash -Bitmap $bmp2
+        $bmp1.Dispose(); $bmp2.Dispose()
+        $hash1 | Should Be $hash2
+    }
+
+    It "returns a very different hash for a left-to-right vs right-to-left gradient" {
+        $bmpAsc = New-Object System.Drawing.Bitmap(32, 32)
+        $bmpDesc = New-Object System.Drawing.Bitmap(32, 32)
+        for ($x = 0; $x -lt 32; $x++) {
+            for ($y = 0; $y -lt 32; $y++) {
+                $bmpAsc.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($x * 8, $x * 8, $x * 8))
+                $bmpDesc.SetPixel($x, $y, [System.Drawing.Color]::FromArgb((31 - $x) * 8, (31 - $x) * 8, (31 - $x) * 8))
+            }
+        }
+        $hashAsc = Get-DHash -Bitmap $bmpAsc
+        $hashDesc = Get-DHash -Bitmap $bmpDesc
+        $bmpAsc.Dispose(); $bmpDesc.Dispose()
+        (Get-HammingDistance -A $hashAsc -B $hashDesc) | Should BeGreaterThan 40
+    }
+}

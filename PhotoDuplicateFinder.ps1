@@ -26,3 +26,23 @@ function Get-HammingDistance {
     }
     return $count
 }
+
+function Get-DHash {
+    param([Parameter(Mandatory)][System.Drawing.Bitmap]$Bitmap)
+
+    $small = New-Object System.Drawing.Bitmap($Bitmap, (New-Object System.Drawing.Size(9, 8)))
+    $hash = [uint64]0
+    $bit = 0
+    for ($y = 0; $y -lt 8; $y++) {
+        for ($x = 0; $x -lt 8; $x++) {
+            $c1 = $small.GetPixel($x, $y)
+            $c2 = $small.GetPixel($x + 1, $y)
+            $g1 = 0.299 * $c1.R + 0.587 * $c1.G + 0.114 * $c1.B
+            $g2 = 0.299 * $c2.R + 0.587 * $c2.G + 0.114 * $c2.B
+            if ($g1 -gt $g2) { $hash = $hash -bor ([uint64]1 -shl $bit) }
+            $bit++
+        }
+    }
+    $small.Dispose()
+    return $hash
+}
