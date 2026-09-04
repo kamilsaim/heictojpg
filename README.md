@@ -46,6 +46,12 @@ Calistirildigi klasorde (alt klasorler dahil) sirasiyla:
 7. **Diger video dosyalarini ayirir** (isterseniz) — `.mp4`, `.mov`,
    `.avi`, `.mkv`, `.wmv`, `.m4v`, `.3gp` uzantili (Live Photo eslesmesi
    olmayan) video dosyalarini `Videolar` klasorune tasir.
+8. **Farkli cozunurlukte ayni fotograflari bulur** (isterseniz) — dosya
+   adindaki `IMG_####` numarasi ve gorsel benzerlik (fark hash) ile ayni
+   fotografin farkli cozunurluklerde kaydedilmis kopyalarini tespit eder
+   (orn. HEIC'ten JPEG'e yeniden encode edilen bir kopya ile telefondan
+   gelen orijinal JPEG), dusuk cozunurluklu olani `Dusuk_Cozunurluklu_Kopyalar`
+   klasorune tasir, yuksek cozunurluklu olan yerinde kalir.
 
 Islem sonunda, ne yapildigina dair bir ozet `HEIC_Donustur_Log_*.txt`
 dosyasina kaydedilir.
@@ -56,6 +62,7 @@ dosyasina kaydedilir.
 |---|---|
 | `HEIC_Donustur.bat` | Cift tiklayip calistirilacak baslangic dosyasi. |
 | `HEIC_Donustur.ps1` | Asil islemi yapan PowerShell scripti. |
+| `PhotoDuplicateFinder.ps1` | Farkli cozunurlukteki ayni fotograflari tespit eden yardimci fonksiyonlar (`HEIC_Donustur.ps1` tarafindan kullanilir). |
 
 ## Gereksinimler
 
