@@ -209,100 +209,102 @@ if ($yapAaeSil) {
     $silAae = Ask-YesNo "AAE dosyalari (duzenleme/efekt bilgisi) silinsin mi?"
 }
 
-Write-Log ""
-Write-Log "HEIC dosyalari araniyor (alt klasorler dahil)..." Cyan
-$heicFiles = Get-ChildItem -Path $root -Recurse -File -Include *.heic,*.HEIC -ErrorAction SilentlyContinue
-$toplam = $heicFiles.Count
-Write-Log "$toplam adet HEIC dosyasi bulundu."
-Write-Log ""
-
-if ($toplam -eq 0) {
-    Write-Log "Donusturulecek HEIC dosyasi yok." Yellow
-} else {
-    $donusturulecekler = New-Object System.Collections.Generic.List[object]
-    foreach ($f in $heicFiles) {
-        $hedef = [System.IO.Path]::ChangeExtension($f.FullName, ".jpg")
-        if (Test-Path -LiteralPath $hedef) {
-            Write-Log "Atlandi (zaten var): $($f.Name)" DarkYellow
-        } else {
-            $donusturulecekler.Add([PSCustomObject]@{ File = $f; Dest = $hedef })
-        }
-    }
-
-    $basarili = New-Object System.Collections.Generic.List[System.IO.FileInfo]
-    $hatali   = 0
-
-    if ($donusturulecekler.Count -gt 0) {
-        $maxThrottle = [Math]::Max(1, [Math]::Min(4, [Environment]::ProcessorCount))
-        Write-Log "$($donusturulecekler.Count) dosya donusturulecek. Es zamanli islem sayisi: $maxThrottle" Cyan
-
-        $pool = [runspacefactory]::CreateRunspacePool(1, $maxThrottle)
-        $pool.ApartmentState = 'STA'
-        $pool.Open()
-
-        $jobs = New-Object System.Collections.Generic.List[object]
-        foreach ($item in $donusturulecekler) {
-            $ps = [powershell]::Create()
-            $ps.RunspacePool = $pool
-            [void]$ps.AddScript($ConvertScriptBlock).AddArgument($item.File.FullName).AddArgument($item.Dest)
-            $jobs.Add([PSCustomObject]@{ Pipe = $ps; Handle = $ps.BeginInvoke(); File = $item.File; Dest = $item.Dest })
-        }
-
-        $i = 0
-        foreach ($job in $jobs) {
-            $i++
-            try {
-                $result = $job.Pipe.EndInvoke($job.Handle)
-                if ($result.Success) {
-                    Write-Log "[$i/$($jobs.Count)] OK: $($job.File.Name) -> $(Split-Path -Leaf $job.Dest)" Green
-                    $basarili.Add($job.File)
-                } else {
-                    $hatali++
-                    Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $($result.Error)" Red
-                }
-            }
-            catch {
-                $hatali++
-                Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $($_.Exception.Message)" Red
-            }
-            finally {
-                $job.Pipe.Dispose()
-            }
-        }
-
-        $pool.Close()
-        $pool.Dispose()
-    }
-
+if ($yapDonustur) {
     Write-Log ""
-    Write-Log "Donusturme tamamlandi. Basarili: $($basarili.Count)  Hatali: $hatali" Cyan
+    Write-Log "HEIC dosyalari araniyor (alt klasorler dahil)..." Cyan
+    $heicFiles = Get-ChildItem -Path $root -Recurse -File -Include *.heic,*.HEIC -ErrorAction SilentlyContinue
+    $toplam = $heicFiles.Count
+    Write-Log "$toplam adet HEIC dosyasi bulundu."
+    Write-Log ""
 
-    if ($hatali -gt 0) {
-        Write-Log "Not: Hatali dosyalar icin Windows'ta 'HEIF Image Extensions' ve 'HEVC Video Extensions' uygulamalarinin (Microsoft Store) kurulu oldugundan emin olun." Yellow
-    }
-
-    if ($basarili.Count -gt 0) {
-        Write-Host ""
-        $silHeic = Ask-YesNo "Basariyla donusturulen $($basarili.Count) adet HEIC dosyasi silinsin mi?"
-        if ($silHeic) {
-            foreach ($f in $basarili) {
-                Remove-Item -LiteralPath $f.FullName -Force
+    if ($toplam -eq 0) {
+        Write-Log "Donusturulecek HEIC dosyasi yok." Yellow
+    } else {
+        $donusturulecekler = New-Object System.Collections.Generic.List[object]
+        foreach ($f in $heicFiles) {
+            $hedef = [System.IO.Path]::ChangeExtension($f.FullName, ".jpg")
+            if (Test-Path -LiteralPath $hedef) {
+                Write-Log "Atlandi (zaten var): $($f.Name)" DarkYellow
+            } else {
+                $donusturulecekler.Add([PSCustomObject]@{ File = $f; Dest = $hedef })
             }
-            Write-Log "$($basarili.Count) adet HEIC dosyasi silindi." Green
+        }
 
-            $pairedMovs = @($basarili | ForEach-Object { Get-PairedMov $_ } | Where-Object { $_ })
-            if ($pairedMovs.Count -gt 0) {
-                Write-Host ""
-                $silMov = Ask-YesNo "Silinen HEIC dosyalarina ait $($pairedMovs.Count) adet Live Photo videosu (.MOV) bulundu. Bunlar da silinsin mi?"
-                if ($silMov) {
-                    $pairedMovs | Remove-Item -Force
-                    Write-Log "$($pairedMovs.Count) adet MOV dosyasi silindi." Green
-                } else {
-                    Write-Log "MOV dosyalari silinmedi." Yellow
+        $basarili = New-Object System.Collections.Generic.List[System.IO.FileInfo]
+        $hatali   = 0
+
+        if ($donusturulecekler.Count -gt 0) {
+            $maxThrottle = [Math]::Max(1, [Math]::Min(4, [Environment]::ProcessorCount))
+            Write-Log "$($donusturulecekler.Count) dosya donusturulecek. Es zamanli islem sayisi: $maxThrottle" Cyan
+
+            $pool = [runspacefactory]::CreateRunspacePool(1, $maxThrottle)
+            $pool.ApartmentState = 'STA'
+            $pool.Open()
+
+            $jobs = New-Object System.Collections.Generic.List[object]
+            foreach ($item in $donusturulecekler) {
+                $ps = [powershell]::Create()
+                $ps.RunspacePool = $pool
+                [void]$ps.AddScript($ConvertScriptBlock).AddArgument($item.File.FullName).AddArgument($item.Dest)
+                $jobs.Add([PSCustomObject]@{ Pipe = $ps; Handle = $ps.BeginInvoke(); File = $item.File; Dest = $item.Dest })
+            }
+
+            $i = 0
+            foreach ($job in $jobs) {
+                $i++
+                try {
+                    $result = $job.Pipe.EndInvoke($job.Handle)
+                    if ($result.Success) {
+                        Write-Log "[$i/$($jobs.Count)] OK: $($job.File.Name) -> $(Split-Path -Leaf $job.Dest)" Green
+                        $basarili.Add($job.File)
+                    } else {
+                        $hatali++
+                        Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $($result.Error)" Red
+                    }
+                }
+                catch {
+                    $hatali++
+                    Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $($_.Exception.Message)" Red
+                }
+                finally {
+                    $job.Pipe.Dispose()
                 }
             }
-        } else {
-            Write-Log "HEIC dosyalari silinmedi." Yellow
+
+            $pool.Close()
+            $pool.Dispose()
+        }
+
+        Write-Log ""
+        Write-Log "Donusturme tamamlandi. Basarili: $($basarili.Count)  Hatali: $hatali" Cyan
+
+        if ($hatali -gt 0) {
+            Write-Log "Not: Hatali dosyalar icin Windows'ta 'HEIF Image Extensions' ve 'HEVC Video Extensions' uygulamalarinin (Microsoft Store) kurulu oldugundan emin olun." Yellow
+        }
+
+        if ($basarili.Count -gt 0) {
+            Write-Host ""
+            $silHeic = Ask-YesNo "Basariyla donusturulen $($basarili.Count) adet HEIC dosyasi silinsin mi?"
+            if ($silHeic) {
+                foreach ($f in $basarili) {
+                    Remove-Item -LiteralPath $f.FullName -Force
+                }
+                Write-Log "$($basarili.Count) adet HEIC dosyasi silindi." Green
+
+                $pairedMovs = @($basarili | ForEach-Object { Get-PairedMov $_ } | Where-Object { $_ })
+                if ($pairedMovs.Count -gt 0) {
+                    Write-Host ""
+                    $silMov = Ask-YesNo "Silinen HEIC dosyalarina ait $($pairedMovs.Count) adet Live Photo videosu (.MOV) bulundu. Bunlar da silinsin mi?"
+                    if ($silMov) {
+                        $pairedMovs | Remove-Item -Force
+                        Write-Log "$($pairedMovs.Count) adet MOV dosyasi silindi." Green
+                    } else {
+                        Write-Log "MOV dosyalari silinmedi." Yellow
+                    }
+                }
+            } else {
+                Write-Log "HEIC dosyalari silinmedi." Yellow
+            }
         }
     }
 }
