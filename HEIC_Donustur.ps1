@@ -64,8 +64,8 @@ function Ask-Menu {
         Write-Host ""
         Write-Host "Hangi islemleri yapmak istiyorsunuz? (birden fazlasini virgulle ayirarak secin, bos = hepsi)" -ForegroundColor Cyan
         Write-Host ""
-        foreach ($k in $secenekler.Keys) {
-            Write-Host ("  {0}) {1}" -f $k, $secenekler[$k])
+        foreach ($secenek in $secenekler.GetEnumerator()) {
+            Write-Host ("  {0}) {1}" -f $secenek.Key, $secenek.Value)
         }
         Write-Host ""
         $girdi = Read-Host "Seciminiz (orn: 1,3,4) [Enter = hepsi]"
