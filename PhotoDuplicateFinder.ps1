@@ -16,3 +16,13 @@ function Get-ImgKey {
     }
     return $null
 }
+
+function Get-HammingDistance {
+    param([Parameter(Mandatory)][uint64]$A, [Parameter(Mandatory)][uint64]$B)
+    $xor = $A -bxor $B
+    $count = 0
+    for ($i = 0; $i -lt 64; $i++) {
+        if (($xor -band ([uint64]1 -shl $i)) -ne 0) { $count++ }
+    }
+    return $count
+}
