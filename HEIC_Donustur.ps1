@@ -510,7 +510,10 @@ if ($tasiCozunurluk) {
         }
         if ($parmakIzleri.Count -lt 2) { continue }
 
-        $kumeler = Resolve-DuplicateClusters -Fingerprints @($parmakIzleri) -Threshold $hammingEsigi
+        # NOT: "@($parmakIzleri)" (List[object] -> object[]) PowerShell 5.1'in dinamik
+        # parametre baglayicisinda "Bağımsız değişken türleri eşleşmiyor" (ArgumentException)
+        # hatasina yol aciyor. ".ToArray()" kullanarak bu sorunu onluyoruz.
+        $kumeler = Resolve-DuplicateClusters -Fingerprints $parmakIzleri.ToArray() -Threshold $hammingEsigi
         foreach ($kume in $kumeler) {
             $sonuc = Select-DuplicateWinnerAndLosers -Cluster $kume
             foreach ($kaybeden in $sonuc.Losers) {

@@ -2,6 +2,15 @@
 # Bu dosya HEIC_Donustur.ps1 tarafindan dot-source edilir ve
 # PhotoDuplicateFinder.Tests.ps1 ile Pester uzerinden test edilir.
 
+# Get-DHash, Get-OrientationCorrectedBitmap ve Get-ImageFingerprint fonksiyonlari
+# System.Drawing.Bitmap ve ilgili System.Drawing/System.Drawing.Imaging tiplerini
+# kullanir. Bu assembly varsayilan olarak yuklu degildir; burada yuklemezsek bu
+# dosya taze bir PowerShell surecinde dot-source edildiginde (ornegin
+# HEIC_Donustur.ps1 uzerinden) "Cannot find type [System.Drawing.Bitmap]" hatasi
+# alinir ve Get-ImageFingerprint bunu sessizce yutup $null donerek her goruntuyu
+# "okunamadi" olarak isaretler.
+Add-Type -AssemblyName System.Drawing
+
 function Get-ImgKey {
     param([Parameter(Mandatory)][string]$FileName)
     # NOT: Turkce sistem kulturunde (tr-TR) 'i' ve 'I' harfleri varsayilan
