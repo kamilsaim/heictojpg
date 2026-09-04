@@ -382,9 +382,12 @@ function Test-LivePhotoMov([System.IO.FileInfo]$movFile) {
 }
 
 Write-Host ""
-$tasiLivePhoto = Ask-YesNo "Fotograflarla eslesen Live Photo videolari (.MOV) 'LivePhoto_Videolari' klasorune tasinsin mi?"
 $livePhotoFolder = Join-Path $root "LivePhoto_Videolari"
 $tasinanLivePhotoYollari = New-Object System.Collections.Generic.List[string]
+$tasiLivePhoto = $false
+if ($yapLivePhotoTasi) {
+    $tasiLivePhoto = Ask-YesNo "Fotograflarla eslesen Live Photo videolari (.MOV) 'LivePhoto_Videolari' klasorune tasinsin mi?"
+}
 
 if ($tasiLivePhoto) {
     Write-Log ""
