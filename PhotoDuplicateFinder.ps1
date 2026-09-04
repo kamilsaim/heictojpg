@@ -49,3 +49,24 @@ function Get-DHash {
         $small.Dispose()
     }
 }
+
+$script:ExifOrientationPropertyId = 0x0112
+
+function Get-OrientationCorrectedBitmap {
+    param([Parameter(Mandatory)][System.Drawing.Bitmap]$Bitmap)
+
+    if ($Bitmap.PropertyIdList -contains $script:ExifOrientationPropertyId) {
+        $prop = $Bitmap.GetPropertyItem($script:ExifOrientationPropertyId)
+        $orientation = [int]$prop.Value[0]
+        switch ($orientation) {
+            2 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::RotateNoneFlipX) }
+            3 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate180FlipNone) }
+            4 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate180FlipX) }
+            5 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipX) }
+            6 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone) }
+            7 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate270FlipX) }
+            8 { $Bitmap.RotateFlip([System.Drawing.RotateFlipType]::Rotate270FlipNone) }
+        }
+    }
+    return $Bitmap
+}

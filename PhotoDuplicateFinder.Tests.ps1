@@ -71,3 +71,37 @@ Describe "Get-DHash" {
         (Get-HammingDistance -A $hashAsc -B $hashDesc) | Should BeGreaterThan 40
     }
 }
+
+Describe "Get-OrientationCorrectedBitmap" {
+    BeforeEach {
+        Add-Type -AssemblyName System.Drawing
+    }
+
+    function New-FakeExifPropertyItem([int]$Id, [int]$Type, [byte[]]$Value) {
+        $item = [System.Runtime.Serialization.FormatterServices]::GetUninitializedObject([System.Drawing.Imaging.PropertyItem])
+        $item.Id = $Id
+        $item.Type = $Type
+        $item.Len = $Value.Length
+        $item.Value = $Value
+        return $item
+    }
+
+    It "leaves a bitmap without an orientation tag unchanged" {
+        $bmp = New-Object System.Drawing.Bitmap(6, 4)
+        $result = Get-OrientationCorrectedBitmap -Bitmap $bmp
+        $result.Width | Should Be 6
+        $result.Height | Should Be 4
+        $bmp.Dispose()
+    }
+
+    It "swaps width and height for a 90-degree orientation tag (value 6)" {
+        $bmp = New-Object System.Drawing.Bitmap(6, 4)
+        $orientationItem = New-FakeExifPropertyItem -Id 0x0112 -Type 3 -Value ([BitConverter]::GetBytes([uint16]6))
+        $bmp.SetPropertyItem($orientationItem)
+
+        $result = Get-OrientationCorrectedBitmap -Bitmap $bmp
+        $result.Width | Should Be 4
+        $result.Height | Should Be 6
+        $bmp.Dispose()
+    }
+}
