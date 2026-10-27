@@ -30,7 +30,10 @@ calisacagini secersiniz (secilmeyenler icin hicbir soru sorulmaz).
 Calistirildigi klasorde (alt klasorler dahil) sirasiyla:
 
 1. **HEIC -> JPEG donusturur** — bulunan tum `.heic` dosyalarini `.jpg`
-   olarak kaydeder, orijinal EXIF yonlendirmesini korur. Birden fazla
+   olarak kaydeder, orijinal EXIF yonlendirmesini korur. Cekim tarihi,
+   konum (GPS) ve kamera bilgileri JPG'ye aktarilir; JPG'nin dosya tarihi de
+   fotografin cekildigi tarihe ayarlanir (galeri uygulamalari dogru siralar).
+   iPhone'un genis renk uzayi sRGB'ye cevrilir, renkler soluk cikmaz. Birden fazla
    dosyayi ayni anda (paralel) donusturerek hizlandirir.
 2. **Donusturulen HEIC dosyalarini siler** (isterseniz) — basariyla
    donusturulen HEIC dosyalarini, onaylarsaniz siler.
