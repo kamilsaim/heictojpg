@@ -9,7 +9,7 @@ function Write-Log([string]$msg, [ConsoleColor]$color = 'Gray') {
     $logLines.Add($msg)
 }
 
-$Version = "1.3"
+$Version = "1.3.1"
 
 Write-Host ""
 Write-Host "  __  __  ___ ____  ____   " -ForegroundColor Cyan
@@ -173,10 +173,7 @@ $ConvertScriptBlock = {
             "System.Photo.LensManufacturer", "System.Photo.LensModel",
             "System.Photo.FNumber", "System.Photo.ExposureTime", "System.Photo.ISOSpeed",
             "System.Photo.FocalLength", "System.Photo.FocalLengthInFilm", "System.Photo.Flash",
-            "System.Photo.ExposureBias", "System.Photo.WhiteBalance", "System.ApplicationName",
-            "System.GPS.Latitude", "System.GPS.LatitudeRef", "System.GPS.Longitude", "System.GPS.LongitudeRef",
-            "System.GPS.Altitude", "System.GPS.AltitudeRef", "System.GPS.ImgDirection", "System.GPS.ImgDirectionRef",
-            "System.GPS.Speed", "System.GPS.SpeedRef"
+            "System.Photo.ExposureBias", "System.Photo.WhiteBalance", "System.ApplicationName"
         )
         $metaVeriler = New-Object System.Collections.Generic.List[object]
         foreach ($ad in $metaAdlari) {
@@ -185,6 +182,20 @@ $ConvertScriptBlock = {
                 $istek.Add($ad)
                 $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
                 foreach ($kv in $bulunan) { $metaVeriler.Add($kv) }
+            } catch { }
+        }
+
+        # GPS ayri: WinRT "System.GPS.Latitude/Longitude" (dizi tipli) ozelliklerini hic okuyamiyor,
+        # bu yuzden konum bilgisi ham EXIF GPS etiketleri (0-31) olarak HEIC'teki "/ifd/gps" yolundan
+        # okunup JPG'deki "/app1/ifd/gps" yoluna birebir kopyalanir (deger bicimi iki tarafta ayni).
+        for ($etiket = 0; $etiket -le 31; $etiket++) {
+            try {
+                $istek = New-Object System.Collections.Generic.List[string]
+                $istek.Add("/ifd/gps/{ushort=$etiket}")
+                $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
+                foreach ($kv in $bulunan) {
+                    $metaVeriler.Add((New-Object 'System.Collections.Generic.KeyValuePair[string,Windows.Graphics.Imaging.BitmapTypedValue]' "/app1/ifd/gps/{ushort=$etiket}", $kv.Value))
+                }
             } catch { }
         }
 
