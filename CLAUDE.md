@@ -20,7 +20,8 @@ There is no build step — this is a script-based tool, run directly.
   [System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw "HEIC_Donustur.ps1"), [ref]$errs) | Out-Null
   if ($errs.Count -eq 0) { "OK" } else { $errs }
   ```
-- **Releases:** version lives in `$Version` at the top of `HEIC_Donustur.ps1`. Tag as `vX.Y` and publish via `gh release create`.
+- **Releases:** version lives in `$Version` at the top of `HEIC_Donustur.ps1`. Tag as `vX.Y` (or `vX.Y.Z` for fix releases) and publish via `gh release create`, attaching a `HEIC_Donustur_vX.Y.zip` containing `HEIC_Donustur.bat`, `HEIC_Donustur.ps1`, `PhotoDuplicateFinder.ps1` and `README.md` — that zip is what end users download.
+- **Before a release, test conversion on real iPhone HEICs**, not only synthetic ones: synthetic HEICs made via WinRT can't carry GPS, which is how a GPS-loss bug slipped into v1.3. Compare DateTaken/CameraModel/GPS.Latitude/Longitude/Altitude between each HEIC and its JPG via `Shell.Application` `ExtendedProperty`.
 
 ## Architecture
 
@@ -52,4 +53,4 @@ Two PowerShell files, split by testability:
 
 ## Design docs
 
-Feature work in this repo has gone through a brainstorm → spec → plan process; past specs/plans are kept in `docs/superpowers/specs/` and `docs/superpowers/plans/` and are worth checking before starting related work — they capture *why* certain trade-offs were made (e.g. why the resolution-duplicate-finder uses a filename pre-filter instead of full pairwise comparison, why the Hamming threshold is `6`).
+Feature work in this repo has gone through a brainstorm → spec → plan process. The specs/plans were removed from the working tree (commit `ce88aa4`) but are still in git history and worth checking before starting related work — they capture *why* certain trade-offs were made (e.g. why the resolution-duplicate-finder uses a filename pre-filter instead of full pairwise comparison, why the Hamming threshold is `6`). List them with `git show --stat ce88aa4` and read one with `git show ce88aa4^:docs/superpowers/specs/<file>.md`.

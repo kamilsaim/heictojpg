@@ -10,7 +10,10 @@ Live Photo videolarini duzenleyen bir Windows araci. Tek yapmaniz gereken
 
 ## Kullanim
 
-1. `HEIC_Donustur.bat` dosyasini, icinde HEIC fotograflari olan klasore
+0. [Releases](https://github.com/kamilsaim/heictojpg/releases/latest)
+   sayfasindan `HEIC_Donustur_vX.Y.zip` dosyasini indirip cikartin.
+1. Zip'ten cikan dosyalarin hepsini (`HEIC_Donustur.bat`, `HEIC_Donustur.ps1`,
+   `PhotoDuplicateFinder.ps1`) birlikte, icinde HEIC fotograflari olan klasore
    (veya bir ust klasore, alt klasorler de taranir) kopyalayin.
 2. Cift tiklayip calistirin.
 3. Acilan menuden hangi islemleri yapmak istediginizi secin (numaralari
