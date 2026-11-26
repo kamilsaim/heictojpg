@@ -9,4 +9,10 @@ if not exist "%~dp0HEIC_Donustur.ps1" (
     exit /b 1
 )
 
+if not exist "%~dp0PhotoDuplicateFinder.ps1" (
+    echo HATA: PhotoDuplicateFinder.ps1 bulunamadi. Bu .bat dosyasi ile ayni klasorde olmali.
+    pause
+    exit /b 1
+)
+
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0HEIC_Donustur.ps1"

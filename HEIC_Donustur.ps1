@@ -1,7 +1,18 @@
-$root = $PSScriptRoot
-if (-not $root) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
+﻿param(
+    [string]$WorkDir
+)
 
-. (Join-Path $root "PhotoDuplicateFinder.ps1")
+$scriptDir = $PSScriptRoot
+if (-not $scriptDir) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+
+if ($WorkDir) {
+    $trimmed = $WorkDir.TrimEnd('\')
+    $root = if ($trimmed -match '^[A-Za-z]:$') { "$trimmed\" } else { $trimmed }
+} else {
+    $root = $scriptDir
+}
+
+. (Join-Path $scriptDir "PhotoDuplicateFinder.ps1")
 
 $logLines = New-Object System.Collections.Generic.List[string]
 function Write-Log([string]$msg, [ConsoleColor]$color = 'Gray') {
@@ -9,7 +20,7 @@ function Write-Log([string]$msg, [ConsoleColor]$color = 'Gray') {
     $logLines.Add($msg)
 }
 
-$Version = "1.3.1"
+$Version = "1.4"
 
 Write-Host ""
 Write-Host "  __  __  ___ ____  ____   " -ForegroundColor Cyan
@@ -147,81 +158,91 @@ $ConvertScriptBlock = {
     function Convert-HeicToJpg([string]$srcPath, [string]$destPath) {
         $destDir  = Split-Path -Parent $destPath
         $destName = Split-Path -Leaf $destPath
+        $srcStream  = $null
+        $destStream = $null
+        $tamamlandi = $false
 
-        $file       = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($srcPath)) ([Windows.Storage.StorageFile])
-        $srcStream  = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
-        $decoder    = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($srcStream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+        try {
+            $file       = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($srcPath)) ([Windows.Storage.StorageFile])
+            $srcStream  = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+            $decoder    = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($srcStream)) ([Windows.Graphics.Imaging.BitmapDecoder])
 
-        # iPhone fotograflari genis renk uzayinda (Display P3) kaydedilir; JPG'ye renk profili
-        # tasinmadigi icin pikseller sRGB'ye cevrilir, aksi halde renkler soluk gorunur.
-        $transform  = New-Object Windows.Graphics.Imaging.BitmapTransform
-        $pixelData  = Await ($decoder.GetPixelDataAsync(
-                        $decoder.BitmapPixelFormat,
-                        $decoder.BitmapAlphaMode,
-                        $transform,
-                        [Windows.Graphics.Imaging.ExifOrientationMode]::RespectExifOrientation,
-                        [Windows.Graphics.Imaging.ColorManagementMode]::ColorManageToSRgb
-                      )) ([Windows.Graphics.Imaging.PixelDataProvider])
+            # iPhone fotograflari genis renk uzayinda (Display P3) kaydedilir; JPG'ye renk profili
+            # tasinmadigi icin pikseller sRGB'ye cevrilir, aksi halde renkler soluk gorunur.
+            $transform  = New-Object Windows.Graphics.Imaging.BitmapTransform
+            $pixelData  = Await ($decoder.GetPixelDataAsync(
+                            $decoder.BitmapPixelFormat,
+                            $decoder.BitmapAlphaMode,
+                            $transform,
+                            [Windows.Graphics.Imaging.ExifOrientationMode]::RespectExifOrientation,
+                            [Windows.Graphics.Imaging.ColorManagementMode]::ColorManageToSRgb
+                          )) ([Windows.Graphics.Imaging.PixelDataProvider])
 
-        # Cekim tarihi, konum, kamera bilgisi gibi meta verileri oku. SetPixelData yalnizca
-        # pikselleri yazar; bunlar ayrica kopyalanmazsa JPG'de kaybolur. Orientation kasitli
-        # olarak listede yok: pikseller zaten RespectExifOrientation ile donduruldu.
-        # Her ozellik tek tek okunur/yazilir, cunku desteklenmeyen tek bir ozellik tum
-        # toplu islemi basarisiz kilar.
-        $metaAdlari = @(
-            "System.Photo.DateTaken", "System.Photo.CameraManufacturer", "System.Photo.CameraModel",
-            "System.Photo.LensManufacturer", "System.Photo.LensModel",
-            "System.Photo.FNumber", "System.Photo.ExposureTime", "System.Photo.ISOSpeed",
-            "System.Photo.FocalLength", "System.Photo.FocalLengthInFilm", "System.Photo.Flash",
-            "System.Photo.ExposureBias", "System.Photo.WhiteBalance", "System.ApplicationName"
-        )
-        $metaVeriler = New-Object System.Collections.Generic.List[object]
-        foreach ($ad in $metaAdlari) {
-            try {
-                $istek = New-Object System.Collections.Generic.List[string]
-                $istek.Add($ad)
-                $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
-                foreach ($kv in $bulunan) { $metaVeriler.Add($kv) }
-            } catch { }
-        }
+            # Cekim tarihi, konum, kamera bilgisi gibi meta verileri oku. SetPixelData yalnizca
+            # pikselleri yazar; bunlar ayrica kopyalanmazsa JPG'de kaybolur. Orientation kasitli
+            # olarak listede yok: pikseller zaten RespectExifOrientation ile donduruldu.
+            # Her ozellik tek tek okunur/yazilir, cunku desteklenmeyen tek bir ozellik tum
+            # toplu islemi basarisiz kilar.
+            $metaAdlari = @(
+                "System.Photo.DateTaken", "System.Photo.CameraManufacturer", "System.Photo.CameraModel",
+                "System.Photo.LensManufacturer", "System.Photo.LensModel",
+                "System.Photo.FNumber", "System.Photo.ExposureTime", "System.Photo.ISOSpeed",
+                "System.Photo.FocalLength", "System.Photo.FocalLengthInFilm", "System.Photo.Flash",
+                "System.Photo.ExposureBias", "System.Photo.WhiteBalance", "System.ApplicationName"
+            )
+            $metaVeriler = New-Object System.Collections.Generic.List[object]
+            foreach ($ad in $metaAdlari) {
+                try {
+                    $istek = New-Object System.Collections.Generic.List[string]
+                    $istek.Add($ad)
+                    $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
+                    foreach ($kv in $bulunan) { $metaVeriler.Add($kv) }
+                } catch { }
+            }
 
-        # GPS ayri: WinRT "System.GPS.Latitude/Longitude" (dizi tipli) ozelliklerini hic okuyamiyor,
-        # bu yuzden konum bilgisi ham EXIF GPS etiketleri (0-31) olarak HEIC'teki "/ifd/gps" yolundan
-        # okunup JPG'deki "/app1/ifd/gps" yoluna birebir kopyalanir (deger bicimi iki tarafta ayni).
-        for ($etiket = 0; $etiket -le 31; $etiket++) {
-            try {
-                $istek = New-Object System.Collections.Generic.List[string]
-                $istek.Add("/ifd/gps/{ushort=$etiket}")
-                $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
-                foreach ($kv in $bulunan) {
-                    $metaVeriler.Add((New-Object 'System.Collections.Generic.KeyValuePair[string,Windows.Graphics.Imaging.BitmapTypedValue]' "/app1/ifd/gps/{ushort=$etiket}", $kv.Value))
+            # GPS ayri: WinRT "System.GPS.Latitude/Longitude" (dizi tipli) ozelliklerini hic okuyamiyor,
+            # bu yuzden konum bilgisi ham EXIF GPS etiketleri (0-31) olarak HEIC'teki "/ifd/gps" yolundan
+            # okunup JPG'deki "/app1/ifd/gps" yoluna birebir kopyalanir (deger bicimi iki tarafta ayni).
+            for ($etiket = 0; $etiket -le 31; $etiket++) {
+                try {
+                    $istek = New-Object System.Collections.Generic.List[string]
+                    $istek.Add("/ifd/gps/{ushort=$etiket}")
+                    $bulunan = Await ($decoder.BitmapProperties.GetPropertiesAsync($istek)) ([Windows.Graphics.Imaging.BitmapPropertySet])
+                    foreach ($kv in $bulunan) {
+                        $metaVeriler.Add((New-Object 'System.Collections.Generic.KeyValuePair[string,Windows.Graphics.Imaging.BitmapTypedValue]' "/app1/ifd/gps/{ushort=$etiket}", $kv.Value))
+                    }
+                } catch { }
+            }
+
+            $destFolder = Await ([Windows.Storage.StorageFolder]::GetFolderFromPathAsync($destDir)) ([Windows.Storage.StorageFolder])
+            $destFile   = Await ($destFolder.CreateFileAsync($destName, [Windows.Storage.CreationCollisionOption]::ReplaceExisting)) ([Windows.Storage.StorageFile])
+            $destStream = Await ($destFile.OpenAsync([Windows.Storage.FileAccessMode]::ReadWrite)) ([Windows.Storage.Streams.IRandomAccessStream])
+
+            $encoder = Await ([Windows.Graphics.Imaging.BitmapEncoder]::CreateAsync([Windows.Graphics.Imaging.BitmapEncoder]::JpegEncoderId, $destStream)) ([Windows.Graphics.Imaging.BitmapEncoder])
+            $bytes = $pixelData.DetachPixelData()
+            $encoder.SetPixelData($decoder.BitmapPixelFormat, $decoder.BitmapAlphaMode, [uint32]$decoder.OrientedPixelWidth, [uint32]$decoder.OrientedPixelHeight, $decoder.DpiX, $decoder.DpiY, $bytes)
+
+            $cekimTarihi = $null
+            foreach ($kv in $metaVeriler) {
+                try {
+                    $tekli = New-Object 'System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string,Windows.Graphics.Imaging.BitmapTypedValue]]'
+                    $tekli.Add($kv)
+                    AwaitAction ($encoder.BitmapProperties.SetPropertiesAsync($tekli))
+                } catch { }
+                if ($kv.Key -eq "System.Photo.DateTaken") {
+                    try { $cekimTarihi = ([DateTimeOffset]$kv.Value.Value).LocalDateTime } catch { }
                 }
-            } catch { }
+            }
+            AwaitAction ($encoder.FlushAsync())
+            $tamamlandi = $true
         }
-
-        $destFolder = Await ([Windows.Storage.StorageFolder]::GetFolderFromPathAsync($destDir)) ([Windows.Storage.StorageFolder])
-        $destFile   = Await ($destFolder.CreateFileAsync($destName, [Windows.Storage.CreationCollisionOption]::ReplaceExisting)) ([Windows.Storage.StorageFile])
-        $destStream = Await ($destFile.OpenAsync([Windows.Storage.FileAccessMode]::ReadWrite)) ([Windows.Storage.Streams.IRandomAccessStream])
-
-        $encoder = Await ([Windows.Graphics.Imaging.BitmapEncoder]::CreateAsync([Windows.Graphics.Imaging.BitmapEncoder]::JpegEncoderId, $destStream)) ([Windows.Graphics.Imaging.BitmapEncoder])
-        $bytes = $pixelData.DetachPixelData()
-        $encoder.SetPixelData($decoder.BitmapPixelFormat, $decoder.BitmapAlphaMode, [uint32]$decoder.OrientedPixelWidth, [uint32]$decoder.OrientedPixelHeight, $decoder.DpiX, $decoder.DpiY, $bytes)
-
-        $cekimTarihi = $null
-        foreach ($kv in $metaVeriler) {
-            try {
-                $tekli = New-Object 'System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string,Windows.Graphics.Imaging.BitmapTypedValue]]'
-                $tekli.Add($kv)
-                AwaitAction ($encoder.BitmapProperties.SetPropertiesAsync($tekli))
-            } catch { }
-            if ($kv.Key -eq "System.Photo.DateTaken") {
-                try { $cekimTarihi = ([DateTimeOffset]$kv.Value.Value).LocalDateTime } catch { }
+        finally {
+            if ($destStream) { $destStream.Dispose() }
+            if ($srcStream)  { $srcStream.Dispose() }
+            if (-not $tamamlandi -and (Test-Path -LiteralPath $destPath)) {
+                Remove-Item -LiteralPath $destPath -Force -ErrorAction SilentlyContinue
             }
         }
-        AwaitAction ($encoder.FlushAsync())
-
-        $destStream.Dispose()
-        $srcStream.Dispose()
 
         # Dosya tarihini de fotografin cekildigi ana ayarla (yoksa HEIC'in kendi tarihini kopyala),
         # boylece galeri uygulamalari fotografi dogru tarihe siralar.
@@ -252,7 +273,14 @@ function Move-ToFolder([System.IO.FileInfo]$f, [string]$folder) {
         $hedefYol = Join-Path $folder $hedefAd
         $sayac++
     }
-    Move-Item -LiteralPath $f.FullName -Destination $hedefYol
+    try {
+        Move-Item -LiteralPath $f.FullName -Destination $hedefYol -ErrorAction Stop
+        return $true
+    }
+    catch {
+        Write-Log "HATA (tasinamadi): $($f.Name) - $($_.Exception.Message)" Red
+        return $false
+    }
 }
 
 function Ask-YesNo($soru) {
@@ -272,6 +300,18 @@ function Get-PairedMov([System.IO.FileInfo]$imgFile) {
     $bulunan = $imgFile.Directory.GetFiles($movAdi)
     if ($bulunan.Count -gt 0) { return $bulunan[0] }
     return $null
+}
+
+# Bir video dosyasinin ayni klasorde, ayni isimde eslesen bir fotografi (Live Photo kaynagi) var mi?
+function Test-LivePhotoMov([System.IO.FileInfo]$movFile) {
+    # Windows dosya sistemi buyuk/kucuk harf duyarsiz oldugu icin ".heic" yolu ".HEIC" dosyasini da bulur.
+    # (Burada ToUpper() kullanmayin: Turkce sistemde ".heic".ToUpper() noktali buyuk I ile ".HEIC" olmaz.)
+    $imgUzantilari = @(".jpg", ".jpeg", ".png", ".heic")
+    foreach ($ext in $imgUzantilari) {
+        $imgPath = [System.IO.Path]::ChangeExtension($movFile.FullName, $ext)
+        if (Test-Path -LiteralPath $imgPath) { return $true }
+    }
+    return $false
 }
 
 # Calisilan klasordeki (alt klasorler dahil) dosyalari uzantiya gore bulur; $ExcludeFolders
@@ -307,7 +347,7 @@ if ($yapAaeSil) {
 if ($yapDonustur) {
     Write-Log ""
     Write-Log "HEIC dosyalari araniyor (alt klasorler dahil)..." Cyan
-    $heicFiles = @(Get-FilesByExtension @(".heic"))
+    $heicFiles = @(Get-FilesByExtension @(".heic") @($duplicatesFolder, $resolutionDupFolder))
     $toplam = $heicFiles.Count
     Write-Log "$toplam adet HEIC dosyasi bulundu."
     Write-Log ""
@@ -319,7 +359,7 @@ if ($yapDonustur) {
         $atlanmisAmaVar = New-Object System.Collections.Generic.List[System.IO.FileInfo]
         foreach ($f in $heicFiles) {
             $hedef = [System.IO.Path]::ChangeExtension($f.FullName, ".jpg")
-            if (Test-Path -LiteralPath $hedef) {
+            if ((Test-Path -LiteralPath $hedef) -and (Get-Item -LiteralPath $hedef).Length -gt 0) {
                 Write-Log "Atlandi (zaten var): $($f.Name)" DarkYellow
                 $atlanmisAmaVar.Add($f)
             } else {
@@ -354,13 +394,20 @@ if ($yapDonustur) {
                 $i++
                 try {
                     $result = $job.Pipe.EndInvoke($job.Handle)
-                    if ($result.Success) {
+                    if ($result -and $result.Success) {
                         Write-Log "[$i/$($jobs.Count)] OK: $($job.File.Name) -> $(Split-Path -Leaf $job.Dest)" Green
                         $basarili.Add($job.File)
                         if (-not $result.DateCopied) { $tarihsiz++ }
                     } else {
                         $hatali++
-                        Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $($result.Error)" Red
+                        $hataMesaji = if ($result -and $result.Error) {
+                            $result.Error
+                        } elseif ($job.Pipe.Streams.Error.Count -gt 0) {
+                            ($job.Pipe.Streams.Error | ForEach-Object { $_.ToString() }) -join "; "
+                        } else {
+                            "Bilinmeyen hata"
+                        }
+                        Write-Log "[$i/$($jobs.Count)] HATA: $($job.File.Name) - $hataMesaji" Red
                     }
                 }
                 catch {
@@ -471,12 +518,13 @@ if ($tasiCift) {
 
             foreach ($f in $tasinacaklar) {
                 $pairedMov = Get-PairedMov $f
-                Move-ToFolder -f $f -folder $duplicatesFolder
-                $tasinan++
-
-                if ($pairedMov) {
-                    Move-ToFolder -f $pairedMov -folder $duplicatesFolder
-                    $tasinanMov++
+                if (Move-ToFolder -f $f -folder $duplicatesFolder) {
+                    $tasinan++
+                    if ($pairedMov -and -not (Test-LivePhotoMov $pairedMov)) {
+                        if (Move-ToFolder -f $pairedMov -folder $duplicatesFolder) {
+                            $tasinanMov++
+                        }
+                    }
                 }
             }
         }
@@ -485,18 +533,6 @@ if ($tasiCift) {
             Write-Log "Bunlarla eslesen $tasinanMov adet Live Photo videosu (.MOV) da ayni klasore tasindi." Green
         }
     }
-}
-
-# Bir video dosyasinin ayni klasorde, ayni isimde eslesen bir fotografi (Live Photo kaynagi) var mi?
-function Test-LivePhotoMov([System.IO.FileInfo]$movFile) {
-    # Windows dosya sistemi buyuk/kucuk harf duyarsiz oldugu icin ".heic" yolu ".HEIC" dosyasini da bulur.
-    # (Burada ToUpper() kullanmayin: Turkce sistemde ".heic".ToUpper() noktali buyuk I ile ".HEIC" olmaz.)
-    $imgUzantilari = @(".jpg", ".jpeg", ".png", ".heic")
-    foreach ($ext in $imgUzantilari) {
-        $imgPath = [System.IO.Path]::ChangeExtension($movFile.FullName, $ext)
-        if (Test-Path -LiteralPath $imgPath) { return $true }
-    }
-    return $false
 }
 
 Write-Host ""
@@ -510,7 +546,7 @@ if ($tasiLivePhoto) {
     Write-Log ""
     Write-Log "Live Photo videolari araniyor..." Cyan
 
-    $movDosyalari = @(Get-FilesByExtension @(".mov") @($duplicatesFolder, $livePhotoFolder, $resolutionDupFolder))
+    $movDosyalari = @(Get-FilesByExtension @(".mov") @($duplicatesFolder, $livePhotoFolder, $videosFolder, $resolutionDupFolder))
     $livePhotoMovlari = @($movDosyalari | Where-Object { Test-LivePhotoMov $_ })
 
     if ($livePhotoMovlari.Count -eq 0) {
@@ -519,11 +555,14 @@ if ($tasiLivePhoto) {
         if (-not (Test-Path -LiteralPath $livePhotoFolder)) {
             New-Item -ItemType Directory -Path $livePhotoFolder | Out-Null
         }
+        $tasinanLivePhoto = 0
         foreach ($f in $livePhotoMovlari) {
-            $tasinanLivePhotoYollari.Add($f.FullName)
-            Move-ToFolder -f $f -folder $livePhotoFolder
+            if (Move-ToFolder -f $f -folder $livePhotoFolder) {
+                $tasinanLivePhotoYollari.Add($f.FullName)
+                $tasinanLivePhoto++
+            }
         }
-        Write-Log "$($livePhotoMovlari.Count) adet Live Photo videosu '$livePhotoFolder' klasorune tasindi." Green
+        Write-Log "$tasinanLivePhoto adet Live Photo videosu '$livePhotoFolder' klasorune tasindi." Green
     }
 }
 
@@ -538,7 +577,11 @@ if ($tasiVideo) {
 
     $videoUzantilari = @(".mp4", ".mov", ".avi", ".mkv", ".wmv", ".m4v", ".3gp")
     $videoDosyalari = @(Get-FilesByExtension $videoUzantilari @($duplicatesFolder, $livePhotoFolder, $videosFolder, $resolutionDupFolder) |
-                        Where-Object { $tasinanLivePhotoYollari -notcontains $_.FullName })
+                        Where-Object {
+                            if ($tasinanLivePhotoYollari -contains $_.FullName) { return $false }
+                            if ($_.Extension.ToLowerInvariant() -eq ".mov" -and (Test-LivePhotoMov $_)) { return $false }
+                            return $true
+                        })
 
     if ($videoDosyalari.Count -eq 0) {
         Write-Log "Tasinacak video dosyasi bulunamadi." Yellow
@@ -546,10 +589,13 @@ if ($tasiVideo) {
         if (-not (Test-Path -LiteralPath $videosFolder)) {
             New-Item -ItemType Directory -Path $videosFolder | Out-Null
         }
+        $tasinanVideo = 0
         foreach ($f in $videoDosyalari) {
-            Move-ToFolder -f $f -folder $videosFolder
+            if (Move-ToFolder -f $f -folder $videosFolder) {
+                $tasinanVideo++
+            }
         }
-        Write-Log "$($videoDosyalari.Count) adet video dosyasi '$videosFolder' klasorune tasindi." Green
+        Write-Log "$tasinanVideo adet video dosyasi '$videosFolder' klasorune tasindi." Green
     }
 }
 
@@ -614,11 +660,13 @@ if ($tasiCozunurluk) {
                     New-Item -ItemType Directory -Path $resolutionDupFolder | Out-Null
                 }
                 $pairedMov = Get-PairedMov $kaybeden.FileInfo
-                Move-ToFolder -f $kaybeden.FileInfo -folder $resolutionDupFolder
-                $tasinanCozunurluk++
-                if ($pairedMov) {
-                    Move-ToFolder -f $pairedMov -folder $resolutionDupFolder
-                    $tasinanCozunurlukMov++
+                if (Move-ToFolder -f $kaybeden.FileInfo -folder $resolutionDupFolder) {
+                    $tasinanCozunurluk++
+                    if ($pairedMov -and -not (Test-LivePhotoMov $pairedMov)) {
+                        if (Move-ToFolder -f $pairedMov -folder $resolutionDupFolder) {
+                            $tasinanCozunurlukMov++
+                        }
+                    }
                 }
             }
         }

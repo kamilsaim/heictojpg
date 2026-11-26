@@ -6,16 +6,18 @@
 
 iPhone'dan gelen `.HEIC` fotograflari `.jpg`'ye ceviren, kopya fotograflari ve
 Live Photo videolarini duzenleyen bir Windows araci. Tek yapmaniz gereken
-`.bat` dosyasini calistirmak; kurulum ya da komut satiri bilgisi gerekmez.
+`HEIC_Donustur.exe` dosyasini fotograflarin oldugu klasore kopyalayip cift
+tiklamak; kurulum ya da komut satiri bilgisi gerekmez.
 
 ## Kullanim
 
 0. [Releases](https://github.com/kamilsaim/heictojpg/releases/latest)
-   sayfasindan `HEIC_Donustur_vX.Y.zip` dosyasini indirip cikartin.
-1. Zip'ten cikan dosyalarin hepsini (`HEIC_Donustur.bat`, `HEIC_Donustur.ps1`,
-   `PhotoDuplicateFinder.ps1`) birlikte, icinde HEIC fotograflari olan klasore
+   sayfasindan **`HEIC_Donustur.exe`** dosyasini indirin (isterseniz script
+   surumunu iceren `HEIC_Donustur_vX.Y.zip` paketini de kullanabilirsiniz).
+1. `HEIC_Donustur.exe` dosyasini icinde HEIC fotograflari olan klasore
    (veya bir ust klasore, alt klasorler de taranir) kopyalayin.
 2. Cift tiklayip calistirin.
+   *(Ilk calistirmada Windows SmartScreen uyarisi cikarsa **Ek bilgi → Yine de calistir** secenegini tiklayin.)*
 3. Acilan menuden hangi islemleri yapmak istediginizi secin (numaralari
    virgulle ayirarak yazin, orn. `1,3,4`; hicbir sey yazmadan Enter'a
    basarsaniz tum islemler calisir).
@@ -66,9 +68,11 @@ dosyasina kaydedilir.
 
 | Dosya | Aciklama |
 |---|---|
-| `HEIC_Donustur.bat` | Cift tiklayip calistirilacak baslangic dosyasi. |
+| `HEIC_Donustur.exe` | Tek dosya calistirilabilir surum (Releases sayfasindan indirilebilir veya `.\build.ps1` ile derlenebilir). |
+| `HEIC_Donustur.bat` | Script surumu icin cift tiklayip calistirilacak baslangic dosyasi. |
 | `HEIC_Donustur.ps1` | Asil islemi yapan PowerShell scripti. |
 | `PhotoDuplicateFinder.ps1` | Farkli cozunurlukteki ayni fotograflari tespit eden yardimci fonksiyonlar (`HEIC_Donustur.ps1` tarafindan kullanilir). |
+| `Launcher.cs` / `build.ps1` | Windows'un yerlesik `csc.exe` derleyicisiyle tek dosya `HEIC_Donustur.exe` ureten kaynak ve derleme scripti. |
 
 ## Gereksinimler
 

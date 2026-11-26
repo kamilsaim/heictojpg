@@ -202,8 +202,8 @@ Describe "Select-DuplicateWinnerAndLosers" {
 
     It "keeps the fingerprint with the higher resolution" {
         $cluster = @(
-            (New-FakeFingerprint "low.jpg" 3024 4032 2000000),
-            (New-FakeFingerprint "high.jpg" 4032 3024 6000000)
+            (New-FakeFingerprint "low.jpg" 1512 2016 6000000),
+            (New-FakeFingerprint "high.jpg" 4032 3024 2000000)
         )
         $result = Select-DuplicateWinnerAndLosers -Cluster $cluster
         $result.Winner.Path | Should Be "high.jpg"

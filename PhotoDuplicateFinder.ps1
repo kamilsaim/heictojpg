@@ -135,8 +135,10 @@ function Resolve-DuplicateClusters {
                     # her ikisi de zaten farkli kumelerde: j'nin kumesini i'ninkiyle birlestir
                     $targetId = $clusterIndex[$i]
                     $sourceId = $clusterIndex[$j]
-                    for ($k = 0; $k -lt $n; $k++) {
-                        if ($clusterIndex[$k] -eq $sourceId) { $clusterIndex[$k] = $targetId }
+                    if ($targetId -ne $sourceId) {
+                        for ($k = 0; $k -lt $n; $k++) {
+                            if ($clusterIndex[$k] -eq $sourceId) { $clusterIndex[$k] = $targetId }
+                        }
                     }
                 }
             }
@@ -165,7 +167,7 @@ function Resolve-DuplicateClusters {
 function Select-DuplicateWinnerAndLosers {
     param([Parameter(Mandatory)][object[]]$Cluster)
 
-    $sorted = @($Cluster | Sort-Object -Property @{Expression = { $_.Width * $_.Height }; Descending = $true }, @{Expression = { $_.FileSize }; Descending = $true })
+    $sorted = @($Cluster | Sort-Object -Property @{Expression = { [long]$_.Width * $_.Height }; Descending = $true }, @{Expression = { $_.FileSize }; Descending = $true })
     [PSCustomObject]@{
         Winner = $sorted[0]
         Losers = @($sorted | Select-Object -Skip 1)
